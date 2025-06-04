@@ -2,6 +2,7 @@
   "name": "@opendoor/mcp-server",
   "version": "1.0.0",
   "description": "High-performance MCP server optimized for LLM integration with fast boot times and enhanced security",
+  "type": "module",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "engines": {
@@ -21,11 +22,8 @@
     "health": "curl -f http://localhost:3000/health || exit 1"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^0.5.0",
-    "express": "^4.18.2",
-    "ws": "^8.14.2",
-    "cors": "^2.8.5",
-    "helmet": "^7.1.0",
+    "@modelcontextprotocol/sdk": "^0.6.0",
+    "@ronangrant/mcp-framework": "^1.0.4",
     "dockerode": "^4.0.0",
     "uuid": "^9.0.1",
     "redis": "^4.6.10",
@@ -35,9 +33,7 @@
     "ioredis": "^5.3.2",
     "p-queue": "^7.4.1",
     "node-cache": "^5.1.2",
-    "compression": "^1.7.4",
-    "express-validator": "^7.0.1",
-    "express-rate-limit": "^7.1.5"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^20.17.57",

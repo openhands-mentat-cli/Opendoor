@@ -1,5 +1,5 @@
-import { Logger } from '../utils/Logger';
-import { SUPPORTED_LANGUAGES } from '../types/McpTypes';
+import { Logger } from '../utils/Logger.js';
+import { SUPPORTED_LANGUAGES } from '../types/McpTypes.js';
 
 export class ConfigService {
   private logger = Logger.getInstance();

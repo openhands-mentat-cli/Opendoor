@@ -1,5 +1,5 @@
-import { Session, CreateSessionParams, SessionStatus } from '../types/McpTypes';
-import { Logger } from '../utils/Logger';
+import { Session, CreateSessionParams, SessionStatus } from '../types/McpTypes.js';
+import { Logger } from '../utils/Logger.js';
 import { v4 as uuidv4 } from 'uuid';
 import Redis from 'ioredis';
 import NodeCache from 'node-cache';
@@ -42,7 +42,7 @@ export class SessionManager {
         password: process.env.REDIS_PASSWORD,
         db: parseInt(process.env.REDIS_DB || '0'),
         enableOfflineQueue: false,
-        maxRetriesPerRequest: 3,
+        maxRetriesPerRequest: 2,
         lazyConnect: true,
         family: 4,
         connectTimeout: 5000,
@@ -50,12 +50,8 @@ export class SessionManager {
         keepAlive: 30000,
         // GCP optimizations
         enableAutoPipelining: true, // Better performance for multiple commands
-        maxLoadingTimeout: 5000,
         enableReadyCheck: true,
-        keyPrefix: 'mcp:', // Namespace for keys
-        // Connection pool settings for better resource management
-        maxRetriesPerRequest: 2, // Reduced for faster failover
-        retryDelayOnFailover: 50 // Faster retry
+        keyPrefix: 'mcp:' // Namespace for keys
       });
 
       // Test connection
