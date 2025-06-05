@@ -1,4 +1,4 @@
-import { Logger } from './Logger';
+import { Logger } from './Logger.js';
 import { performance } from 'perf_hooks';
 import os from 'os';
 

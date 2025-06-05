@@ -1,4 +1,4 @@
-import { Logger } from '../utils/Logger';
+import { Logger } from '../utils/Logger.js';
 import Docker from 'dockerode';
 import Redis from 'redis';
 
@@ -17,11 +17,9 @@ export class HealthService {
     
     this.redis = Redis.createClient({
       url: process.env.REDIS_URL || 'redis://localhost:6379',
-      // Connection optimizations
       socket: {
         connectTimeout: 5000,
-        commandTimeout: 3000,
-        keepAlive: true
+        keepAlive: 30000
       }
     });
   }

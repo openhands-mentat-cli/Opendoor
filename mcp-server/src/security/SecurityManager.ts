@@ -1,6 +1,6 @@
 import { IncomingMessage } from 'http';
-import { McpRequest } from '../types/McpTypes';
-import { Logger } from '../utils/Logger';
+import { McpRequest } from '../types/McpTypes.js';
+import { Logger } from '../utils/Logger.js';
 import crypto from 'crypto';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
 import Joi from 'joi';

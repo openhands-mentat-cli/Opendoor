@@ -1,11 +1,11 @@
 import { WebSocket } from 'ws';
 import { IncomingMessage } from 'http';
-import { SessionManager } from '../session/SessionManager';
-import { ContainerManager } from '../container/ContainerManager';
-import { SecurityManager } from '../security/SecurityManager';
-import { ConfigService } from '../services/ConfigService';
-import { Logger } from '../utils/Logger';
-import { McpRequest, McpResponse, McpError } from '../types/McpTypes';
+import { SessionManager } from '../session/SessionManager.js';
+import { ContainerManager } from '../container/ContainerManager.js';
+import { SecurityManager } from '../security/SecurityManager.js';
+import { ConfigService } from '../services/ConfigService.js';
+import { Logger } from '../utils/Logger.js';
+import { McpRequest, McpResponse, McpError } from '../types/McpTypes.js';
 import { RateLimiterMemory } from 'rate-limiter-flexible';
 
 export class McpServer {

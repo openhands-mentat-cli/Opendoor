@@ -1,13 +1,13 @@
 import Docker from 'dockerode';
-import { Logger } from '../utils/Logger';
-import { SessionManager } from '../session/SessionManager';
+import { Logger } from '../utils/Logger.js';
+import { SessionManager } from '../session/SessionManager.js';
 import { 
   ExecutionResult, 
   CodeExecutionParams, 
   PlaywrightSessionConfig, 
   ContainerConfig,
   SUPPORTED_LANGUAGES 
-} from '../types/McpTypes';
+} from '../types/McpTypes.js';
 import { v4 as uuidv4 } from 'uuid';
 import path from 'path';
 import fs from 'fs/promises';
@@ -62,6 +62,15 @@ export class ContainerManager {
     this.logger.info('🐳 Initializing Container Manager...');
 
     try {
+      // Check if we're in development mode without Docker
+      const isDevelopment = process.env.NODE_ENV === 'development' || process.env.SKIP_DOCKER === 'true';
+      
+      if (isDevelopment) {
+        this.logger.warn('⚠️ Running in development mode without Docker - code execution will be simulated');
+        this.initialized = true;
+        return this;
+      }
+
       // Test Docker connection
       await this.docker.ping();
       this.logger.info('✅ Docker connection established');
@@ -475,6 +484,13 @@ export class ContainerManager {
   }
 
   async executeCode(sessionId: string, params: CodeExecutionParams): Promise<ExecutionResult> {
+    // Handle development mode without Docker
+    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.SKIP_DOCKER === 'true';
+    
+    if (isDevelopment) {
+      return this.simulateCodeExecution(params);
+    }
+
     const container = this.containers.get(sessionId);
     if (!container) {
       throw new Error(`Container not found for session ${sessionId}`);
@@ -602,7 +618,31 @@ export class ContainerManager {
     return `http://${host}:${port}`;
   }
 
+  async getPlaywrightUrl(sessionId: string): Promise<string> {
+    const container = this.containers.get(sessionId);
+    if (!container) {
+      throw new Error(`Playwright container not found for session ${sessionId}`);
+    }
+
+    const info = await container.inspect();
+    const port = info.NetworkSettings.Ports['9222/tcp']?.[0]?.HostPort;
+    
+    if (!port) {
+      throw new Error(`Playwright port not found for session ${sessionId}`);
+    }
+
+    const host = process.env.HOST_URL || 'localhost';
+    return `http://${host}:${port}`;
+  }
+
   async createPlaywrightSession(sessionId: string, config: PlaywrightSessionConfig): Promise<any> {
+    // Handle development mode without Docker
+    const isDevelopment = process.env.NODE_ENV === 'development' || process.env.SKIP_DOCKER === 'true';
+    
+    if (isDevelopment) {
+      return this.simulatePlaywrightSession(sessionId, config);
+    }
+
     const containerId = await this.createPlaywrightContainer(sessionId, config);
     const container = this.containers.get(sessionId);
     
@@ -644,6 +684,70 @@ export class ContainerManager {
     } catch (error) {
       this.logger.error(`Error destroying container for session ${sessionId}:`, error);
       throw error;
+    }
+  }
+
+  private getContainerConfig(type: string): any {
+    const baseConfig = {
+      Labels: {
+        'mcp.managed': 'true',
+        'mcp.type': type
+      },
+      HostConfig: {
+        Memory: 512 * 1024 * 1024, // 512MB default
+        CpuQuota: 50000, // 50% CPU
+        NetworkMode: 'bridge',
+        AutoRemove: false,
+        RestartPolicy: { Name: 'no' }
+      }
+    };
+
+    switch (type) {
+      case 'python':
+        return {
+          ...baseConfig,
+          Image: 'mcp-python:latest',
+          WorkingDir: '/workspace'
+        };
+      case 'javascript':
+        return {
+          ...baseConfig,
+          Image: 'mcp-javascript:latest',
+          WorkingDir: '/workspace'
+        };
+      case 'vscode':
+        return {
+          ...baseConfig,
+          Image: 'mcp-vscode:latest',
+          ExposedPorts: { '8080/tcp': {} },
+          HostConfig: {
+            ...baseConfig.HostConfig,
+            Memory: 1024 * 1024 * 1024, // 1GB for VS Code
+            PortBindings: { '8080/tcp': [{ HostPort: '0' }] }
+          }
+        };
+      case 'playwright':
+        return {
+          ...baseConfig,
+          Image: 'mcp-playwright:latest',
+          ExposedPorts: { '9222/tcp': {} },
+          HostConfig: {
+            ...baseConfig.HostConfig,
+            Memory: 1024 * 1024 * 1024, // 1GB for Playwright
+            PortBindings: { '9222/tcp': [{ HostPort: '0' }] }
+          }
+        };
+      default:
+        return baseConfig;
+    }
+  }
+
+  private async cleanupContainer(container: Docker.Container): Promise<void> {
+    try {
+      await container.kill().catch(() => {}); // Ignore if already stopped
+      await container.remove().catch(() => {}); // Ignore if already removed
+    } catch (error) {
+      this.logger.warn('Error cleaning up container:', error);
     }
   }
 
@@ -730,5 +834,52 @@ export class ContainerManager {
       this.logger.debug('Failed to get memory usage:', error);
     }
     return undefined;
+  }
+
+  private simulateCodeExecution(params: CodeExecutionParams): ExecutionResult {
+    this.logger.info(`🔧 Simulating ${params.language} code execution in development mode`);
+    
+    // Simulate different outputs based on language
+    const simulatedOutputs: Record<string, string> = {
+      python: `# Simulated Python execution
+print("Hello from simulated Python!")
+# Code: ${params.code.substring(0, 50)}${params.code.length > 50 ? '...' : ''}
+# Result: Code would execute in production environment`,
+      
+      javascript: `// Simulated JavaScript execution
+console.log("Hello from simulated JavaScript!");
+// Code: ${params.code.substring(0, 50)}${params.code.length > 50 ? '...' : ''}
+// Result: Code would execute in production environment`,
+      
+      bash: `# Simulated Bash execution
+echo "Hello from simulated Bash!"
+# Command: ${params.code.substring(0, 50)}${params.code.length > 50 ? '...' : ''}
+# Result: Command would execute in production environment`
+    };
+
+    return {
+      stdout: simulatedOutputs[params.language] || `# Simulated ${params.language} execution\n# Code would execute in production environment`,
+      stderr: '',
+      executionTime: Math.floor(Math.random() * 100) + 50, // Random time between 50-150ms
+      memoryUsage: Math.floor(Math.random() * 50) + 10, // Random memory 10-60MB
+      exitCode: 0
+    };
+  }
+
+  private simulatePlaywrightSession(sessionId: string, config: PlaywrightSessionConfig): any {
+    this.logger.info(`🔧 Simulating Playwright ${config.browser} session in development mode`);
+    
+    const simulatedPort = 9222 + Math.floor(Math.random() * 1000);
+    const host = 'localhost';
+    
+    return {
+      sessionId,
+      browser: config.browser,
+      wsEndpoint: `ws://${host}:${simulatedPort}`,
+      httpEndpoint: `http://${host}:${simulatedPort}`,
+      containerId: `simulated-${sessionId}`,
+      status: 'simulated',
+      message: 'Playwright session simulated in development mode - would connect to real browser in production'
+    };
   }
 }
