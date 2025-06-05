@@ -16,7 +16,7 @@ docker run -d --name opendoor-mcp-complete \
   -e MCP_TRANSPORT=sse \
   -e NODE_ENV=production \
   -e LOG_LEVEL=info \
-  ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
+  ghcr.io/openhands-mentat-cli/opendoor-opendoor-mcp:latest
 
 # Check health
 curl http://localhost:3000/health
@@ -112,7 +112,7 @@ docker run -d --name opendoor-mcp-custom \
   -e RATE_LIMIT_ENABLED=true \
   -e MCP_TOOLS_ENABLED=execute_code,create_vscode_session,system_health \
   -e NODE_OPTIONS="--max-old-space-size=4096" \
-  ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
+  ghcr.io/openhands-mentat-cli/opendoor-opendoor-mcp:latest
 ```
 
 ## 🔍 Health Monitoring
@@ -207,7 +207,7 @@ docker run -d --name opendoor-mcp-secure \
   -e SECURITY_ENABLED=true \
   -e RATE_LIMIT_ENABLED=true \
   -e ALLOWED_ORIGINS=https://your-domain.com \
-  ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
+  ghcr.io/openhands-mentat-cli/opendoor-opendoor-mcp:latest
 ```
 
 ### Network Security
@@ -217,7 +217,7 @@ docker run -d --name opendoor-mcp-secure \
 version: '3.8'
 services:
   opendoor-mcp:
-    image: ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
+    image: ghcr.io/openhands-mentat-cli/opendoor-opendoor-mcp:latest
     networks:
       - internal
       - external
@@ -242,7 +242,7 @@ networks:
 version: '3.8'
 services:
   opendoor-mcp:
-    image: ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
+    image: ghcr.io/openhands-mentat-cli/opendoor-opendoor-mcp:latest
     deploy:
       replicas: 3
       update_config:
@@ -312,7 +312,7 @@ server {
 
 ```bash
 # Pull latest image
-docker pull ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
+docker pull ghcr.io/openhands-mentat-cli/opendoor-opendoor-mcp:latest
 
 # Rolling update with Docker Compose
 docker-compose -f docker-compose.complete.yml pull
@@ -394,7 +394,7 @@ docker run -d --name opendoor-mcp-optimized \
   -e SESSION_TIMEOUT=1800 \
   -p 3000:3000 \
   -v /var/run/docker.sock:/var/run/docker.sock:ro \
-  ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
+  ghcr.io/openhands-mentat-cli/opendoor-opendoor-mcp:latest
 ```
 
 ## 📞 Support

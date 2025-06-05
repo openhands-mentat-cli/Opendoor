@@ -56,14 +56,14 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component.name }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component.name }}
           tags: |
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
             type=raw,value=latest,enable={{is_default_branch}}
-            type=sha,prefix={{branch}}-
+            type=sha,prefix=sha-,format=short
           labels: |
             org.opencontainers.image.title=Opendoor MCP Server
             org.opencontainers.image.description=${{ matrix.component.description }}
@@ -90,7 +90,7 @@ jobs:
           echo "🧪 Testing Complete Opendoor MCP Server..."
           
           # Get the image name for testing
-          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component.name }}:latest"
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}-${{ matrix.component.name }}:latest"
           
           # Start container in background with comprehensive setup
           docker run --rm -d --name test-mcp-${{ github.run_id }} \

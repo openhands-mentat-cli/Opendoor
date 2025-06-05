@@ -6,7 +6,7 @@ version: '3.8'
 services:
   # Complete Opendoor MCP Server with all tools and services
   opendoor-mcp:
-    image: ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
+    image: ghcr.io/openhands-mentat-cli/opendoor-opendoor-mcp:latest
     container_name: opendoor-mcp-complete
     restart: unless-stopped
     ports:
