@@ -58,43 +58,30 @@ RUN apk add --no-cache \
     # Cleanup
     && rm -rf /var/cache/apk/*
 
-# Install comprehensive Python packages for code execution capabilities
+# Install essential Python packages for MCP server functionality
 RUN pip3 install --no-cache-dir --break-system-packages \
-    # Core scientific computing
-    numpy \
-    pandas \
-    matplotlib \
-    seaborn \
-    scipy \
-    scikit-learn \
-    # Web and API tools
     requests \
     httpx \
     aiohttp \
     fastapi \
     flask \
-    # Data processing
     beautifulsoup4 \
     lxml \
-    openpyxl \
-    # Development tools
-    jupyter \
+    pydantic \
+    redis \
+    pillow
+
+# Install scientific computing packages separately to avoid conflicts
+RUN pip3 install --no-cache-dir --break-system-packages \
+    numpy \
+    pandas \
+    matplotlib
+
+# Install development tools
+RUN pip3 install --no-cache-dir --break-system-packages \
     ipython \
     pytest \
-    # Async and utilities
-    asyncio \
-    aiofiles \
-    pydantic \
-    # Database connectors
-    psycopg2-binary \
-    pymongo \
-    redis \
-    # Machine learning
-    torch \
-    transformers \
-    # Image processing
-    pillow \
-    opencv-python-headless
+    aiofiles
 
 # Create app user and groups with proper permissions
 RUN addgroup -g 1001 -S nodejs && \
