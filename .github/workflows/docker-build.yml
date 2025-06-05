@@ -35,7 +35,7 @@ jobs:
           - name: opendoor-mcp
             dockerfile: Dockerfile.opendoor-mcp
             context: .
-            description: "Complete MCP Server with Redis, VS Code, and multi-language support"
+            description: "Complete Opendoor MCP Server with all tools, services, and multi-language execution capabilities"
 
     steps:
       - name: Checkout repository
@@ -84,59 +84,107 @@ jobs:
           load: ${{ github.event_name == 'pull_request' }}
         timeout-minutes: 45
 
-      - name: Test Docker image
+      - name: Test Complete MCP Server
         if: github.event_name != 'pull_request'
         run: |
-          echo "🧪 Testing Docker image..."
+          echo "🧪 Testing Complete Opendoor MCP Server..."
           
           # Get the image name for testing
           IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component.name }}:latest"
           
-          # Start container in background
+          # Start container in background with comprehensive setup
           docker run --rm -d --name test-mcp-${{ github.run_id }} \
             -p 3000:3000 \
             -p 3001:3001 \
+            -p 6379:6379 \
             -e MCP_TRANSPORT=sse \
             -e NODE_ENV=production \
-            --health-cmd="curl -f http://localhost:3000/health || exit 1" \
-            --health-interval=10s \
-            --health-timeout=5s \
-            --health-retries=3 \
+            -e LOG_LEVEL=debug \
+            -e REDIS_URL=redis://localhost:6379 \
+            --health-cmd="curl -f http://localhost:3000/health && redis-cli -p 6379 ping | grep -q PONG || exit 1" \
+            --health-interval=15s \
+            --health-timeout=10s \
+            --health-retries=5 \
+            --health-start-period=90s \
             "${IMAGE_TAG}"
           
-          # Wait for container to be healthy
-          echo "⏳ Waiting for container to be healthy..."
-          for i in {1..30}; do
-            if docker inspect test-mcp-${{ github.run_id }} --format='{{.State.Health.Status}}' | grep -q "healthy"; then
-              echo "✅ Container is healthy!"
+          # Wait for container to be healthy with extended timeout
+          echo "⏳ Waiting for complete MCP server to be healthy..."
+          for i in {1..60}; do
+            HEALTH_STATUS=$(docker inspect test-mcp-${{ github.run_id }} --format='{{.State.Health.Status}}' 2>/dev/null || echo "starting")
+            if [ "$HEALTH_STATUS" = "healthy" ]; then
+              echo "✅ Complete MCP Server is healthy!"
               break
-            elif [ $i -eq 30 ]; then
-              echo "❌ Container failed to become healthy"
-              docker logs test-mcp-${{ github.run_id }}
+            elif [ "$HEALTH_STATUS" = "unhealthy" ]; then
+              echo "❌ Container is unhealthy"
+              echo "📋 Container logs:"
+              docker logs test-mcp-${{ github.run_id }} --tail 50
+              docker stop test-mcp-${{ github.run_id }}
+              exit 1
+            elif [ $i -eq 60 ]; then
+              echo "❌ Container failed to become healthy after 60 attempts (15 minutes)"
+              echo "📋 Container logs:"
+              docker logs test-mcp-${{ github.run_id }} --tail 50
               docker stop test-mcp-${{ github.run_id }}
               exit 1
             fi
-            echo "⏳ Attempt $i/30, waiting 5 seconds..."
-            sleep 5
+            if [ $((i % 10)) -eq 0 ]; then
+              echo "   Still waiting... ($i/60) Status: $HEALTH_STATUS"
+              echo "   Recent logs:"
+              docker logs test-mcp-${{ github.run_id }} --tail 5
+            fi
+            sleep 15
           done
           
-          # Test health endpoint directly
-          echo "🔍 Testing health endpoint..."
+          # Test all endpoints
+          echo "🔍 Testing MCP Server endpoints..."
+          
+          # Test health endpoint
           if curl -f http://localhost:3000/health; then
             echo "✅ Health endpoint test passed!"
+            curl -s http://localhost:3000/health | jq '.' || echo "Health response received"
           else
             echo "❌ Health endpoint test failed"
-            docker logs test-mcp-${{ github.run_id }}
+            docker logs test-mcp-${{ github.run_id }} --tail 30
             docker stop test-mcp-${{ github.run_id }}
             exit 1
           fi
           
-          # Show container logs for debugging
-          echo "📋 Container logs (last 20 lines):"
-          docker logs test-mcp-${{ github.run_id }} --tail 20
+          # Test Redis connection
+          echo "🔍 Testing Redis connection..."
+          if redis-cli -h localhost -p 6379 ping | grep -q PONG; then
+            echo "✅ Redis connection test passed!"
+          else
+            echo "❌ Redis connection test failed"
+            docker logs test-mcp-${{ github.run_id }} --tail 30
+            docker stop test-mcp-${{ github.run_id }}
+            exit 1
+          fi
+          
+          # Test web interface (if available)
+          echo "🌐 Testing web interface..."
+          if curl -f http://localhost:3001/ >/dev/null 2>&1; then
+            echo "✅ Web interface is accessible"
+          else
+            echo "⚠️  Web interface not accessible (may be normal)"
+          fi
+          
+          # Show comprehensive container information
+          echo "📊 Container Information:"
+          echo "Image: ${IMAGE_TAG}"
+          echo "Status: $(docker inspect test-mcp-${{ github.run_id }} --format='{{.State.Status}}')"
+          echo "Health: $(docker inspect test-mcp-${{ github.run_id }} --format='{{.State.Health.Status}}')"
+          echo "Uptime: $(docker inspect test-mcp-${{ github.run_id }} --format='{{.State.StartedAt}}')"
+          
+          # Show final logs
+          echo "📋 Final container logs (last 30 lines):"
+          docker logs test-mcp-${{ github.run_id }} --tail 30
           
           # Cleanup
+          echo "🧹 Cleaning up..."
           docker stop test-mcp-${{ github.run_id }}
+          
+          echo "✅ Complete MCP Server test passed!"
 
   build-complete:
     needs: build-and-push
