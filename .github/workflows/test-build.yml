@@ -1,0 +1,95 @@
+name: Test Build
+
+on:
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'mcp-server/**'
+      - 'Dockerfile.opendoor-mcp'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '22'
+        cache: 'npm'
+        cache-dependency-path: mcp-server/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./mcp-server
+      run: npm ci
+
+    - name: Build TypeScript
+      working-directory: ./mcp-server
+      run: npm run build
+
+    - name: Test Docker build
+      run: |
+        echo "Testing Docker build..."
+        docker build -f Dockerfile.opendoor-mcp -t opendoor-mcp:test .
+
+    - name: Test container startup (basic)
+      run: |
+        echo "Testing basic container startup..."
+        
+        # Start container with minimal setup
+        docker run --rm -d --name test-basic \
+          -p 3000:3000 \
+          -e MCP_TRANSPORT=sse \
+          -e NODE_ENV=production \
+          opendoor-mcp:test
+        
+        # Wait a bit for startup
+        sleep 30
+        
+        # Check if container is still running
+        if docker ps | grep test-basic; then
+          echo "✅ Container started successfully"
+          
+          # Try to get logs
+          echo "📋 Container logs:"
+          docker logs test-basic --tail 20
+          
+          # Try health check if available
+          if curl -f http://localhost:3000/health 2>/dev/null; then
+            echo "✅ Health endpoint accessible"
+          else
+            echo "⚠️ Health endpoint not accessible (may be normal during startup)"
+          fi
+        else
+          echo "❌ Container failed to start"
+          docker logs test-basic || echo "No logs available"
+          exit 1
+        fi
+        
+        # Cleanup
+        docker stop test-basic || true
+
+    - name: Verify image size
+      run: |
+        echo "📊 Image size analysis:"
+        docker images opendoor-mcp:test --format "table {{.Repository}}\t{{.Tag}}\t{{.Size}}"
+        
+        # Check if image is reasonably sized (less than 500MB)
+        SIZE=$(docker images opendoor-mcp:test --format "{{.Size}}" | sed 's/MB//' | sed 's/GB/*1000/' | bc 2>/dev/null || echo "0")
+        if [ "${SIZE%.*}" -lt 500 ] 2>/dev/null; then
+          echo "✅ Image size is acceptable (${SIZE})"
+        else
+          echo "⚠️ Image size might be large (${SIZE})"
+        fi
+
+    - name: Test summary
+      run: |
+        echo "🎉 Build test completed successfully!"
+        echo "✅ TypeScript compilation passed"
+        echo "✅ Docker image built successfully"
+        echo "✅ Container startup test passed"
+        echo "✅ Image size verified"

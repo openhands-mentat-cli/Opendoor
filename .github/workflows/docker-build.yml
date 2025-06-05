@@ -80,7 +80,8 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
+          load: ${{ github.event_name == 'pull_request' }}
         timeout-minutes: 45
 
       - name: Test Docker image
@@ -88,36 +89,51 @@ jobs:
         run: |
           echo "🧪 Testing Docker image..."
           
+          # Get the image name for testing
+          IMAGE_TAG="${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component.name }}:latest"
+          
           # Start container in background
           docker run --rm -d --name test-mcp-${{ github.run_id }} \
             -p 3000:3000 \
             -p 3001:3001 \
             -e MCP_TRANSPORT=sse \
             -e NODE_ENV=production \
-            ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/${{ matrix.component.name }}:latest
+            --health-cmd="curl -f http://localhost:3000/health || exit 1" \
+            --health-interval=10s \
+            --health-timeout=5s \
+            --health-retries=3 \
+            "${IMAGE_TAG}"
           
-          # Wait for container to start
-          echo "⏳ Waiting for container to start..."
-          sleep 45
-          
-          # Test health endpoint
-          echo "🔍 Testing health endpoint..."
-          for i in {1..10}; do
-            if curl -f http://localhost:3000/health; then
-              echo "✅ Health check passed!"
+          # Wait for container to be healthy
+          echo "⏳ Waiting for container to be healthy..."
+          for i in {1..30}; do
+            if docker inspect test-mcp-${{ github.run_id }} --format='{{.State.Health.Status}}' | grep -q "healthy"; then
+              echo "✅ Container is healthy!"
               break
+            elif [ $i -eq 30 ]; then
+              echo "❌ Container failed to become healthy"
+              docker logs test-mcp-${{ github.run_id }}
+              docker stop test-mcp-${{ github.run_id }}
+              exit 1
             fi
-            echo "⏳ Attempt $i failed, retrying in 5 seconds..."
+            echo "⏳ Attempt $i/30, waiting 5 seconds..."
             sleep 5
           done
           
-          # Test web interface
-          echo "🌐 Testing web interface..."
-          curl -f http://localhost:3001/ || echo "⚠️ Web interface test failed"
+          # Test health endpoint directly
+          echo "🔍 Testing health endpoint..."
+          if curl -f http://localhost:3000/health; then
+            echo "✅ Health endpoint test passed!"
+          else
+            echo "❌ Health endpoint test failed"
+            docker logs test-mcp-${{ github.run_id }}
+            docker stop test-mcp-${{ github.run_id }}
+            exit 1
+          fi
           
           # Show container logs for debugging
-          echo "📋 Container logs:"
-          docker logs test-mcp-${{ github.run_id }} --tail 50
+          echo "📋 Container logs (last 20 lines):"
+          docker logs test-mcp-${{ github.run_id }} --tail 20
           
           # Cleanup
           docker stop test-mcp-${{ github.run_id }}
