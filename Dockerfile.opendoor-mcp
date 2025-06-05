@@ -162,7 +162,7 @@ COPY --chown=nodejs:nodejs mcp-server/README.md ./
 COPY --chown=nodejs:nodejs containers/ ./containers/
 
 # Copy frontend for web interface
-COPY --chown=nodejs:nodejs frontend/ ./frontend/ 2>/dev/null || echo "Frontend not found, skipping"
+COPY --chown=nodejs:nodejs frontend/ ./frontend/
 
 # Copy Docker configuration files
 COPY --chown=nodejs:nodejs mcp-server/docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
