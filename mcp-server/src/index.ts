@@ -72,7 +72,7 @@ async function startWebInterface(port: number) {
           args: [
             "run", "-i", "--rm",
             "-v", "/var/run/docker.sock:/var/run/docker.sock",
-            "ghcr.io/your-username/opendoor-mcp:latest"
+            "ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest"
           ]
         }
       }
@@ -113,7 +113,7 @@ function generateDocumentationHTML(baseUrl: string, mcpPort: number): string {
         args: [
           "run", "-i", "--rm",
           "-v", "/var/run/docker.sock:/var/run/docker.sock",
-          "ghcr.io/your-username/opendoor-mcp:latest"
+          "ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest"
         ]
       }
     }
@@ -195,19 +195,19 @@ function generateDocumentationHTML(baseUrl: string, mcpPort: number): string {
         <h2>🐳 Docker Usage</h2>
         <pre>
 # Pull and run the MCP server
-docker pull ghcr.io/your-username/opendoor-mcp:latest
+docker pull ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
 
 # Run with STDIO transport
 docker run -i --rm \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
-  ghcr.io/your-username/opendoor-mcp:latest
+  ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
 
 # Run with SSE transport
 docker run -d --rm \\
-  -p 3000:3000 \\
+  -p 3000:3000 -p 3001:3001 \\
   -v /var/run/docker.sock:/var/run/docker.sock \\
   -e MCP_TRANSPORT=sse \\
-  ghcr.io/your-username/opendoor-mcp:latest
+  ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
         </pre>
 
         <h2>🔍 API Endpoints</h2>

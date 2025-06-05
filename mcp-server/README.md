@@ -12,7 +12,7 @@ docker run -d --name opendoor-mcp \
   -p 3000:3000 -p 3001:3001 \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -e MCP_TRANSPORT=sse \
-  ghcr.io/your-username/opendoor-mcp:latest
+  ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest
 
 # Access documentation at http://localhost:3001
 ```
@@ -20,8 +20,8 @@ docker run -d --name opendoor-mcp \
 ### Using Docker Compose
 
 ```bash
-git clone https://github.com/your-username/opendoor.git
-cd opendoor/mcp-server
+git clone https://github.com/openhands-mentat-cli/Opendoor.git
+cd Opendoor/mcp-server
 docker-compose up -d
 ```
 
@@ -55,7 +55,7 @@ Add this to your LLM client configuration:
       "args": [
         "run", "-i", "--rm",
         "-v", "/var/run/docker.sock:/var/run/docker.sock",
-        "ghcr.io/your-username/opendoor-mcp:latest"
+        "ghcr.io/openhands-mentat-cli/opendoor/opendoor-mcp:latest"
       ]
     }
   }
@@ -84,8 +84,8 @@ Add this to your LLM client configuration:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/opendoor.git
-cd opendoor/mcp-server
+git clone https://github.com/openhands-mentat-cli/Opendoor.git
+cd Opendoor/mcp-server
 
 # Install dependencies
 npm install
@@ -155,5 +155,5 @@ MIT License - see LICENSE file for details.
 ## 🆘 Support
 
 - Documentation: http://localhost:3001 (when running)
-- Issues: https://github.com/your-username/opendoor/issues
-- Discussions: https://github.com/your-username/opendoor/discussions
+- Issues: https://github.com/openhands-mentat-cli/Opendoor/issues
+- Discussions: https://github.com/openhands-mentat-cli/Opendoor/discussions

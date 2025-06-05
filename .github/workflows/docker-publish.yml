@@ -1,27 +1,31 @@
-name: Build and Publish Docker Image
+name: MCP Server Docker Publish
 
 on:
   push:
-    branches: [ main, mcp-framework-integration ]
-    paths:
-      - 'mcp-server/**'
-  pull_request:
     branches: [ main ]
     paths:
       - 'mcp-server/**'
+      - 'Dockerfile.opendoor-mcp'
   release:
     types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Docker tag to build'
+        required: false
+        default: 'latest'
 
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}/opendoor-mcp
 
 jobs:
-  build-and-push:
+  build-and-publish:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+      id-token: write
 
     steps:
     - name: Checkout repository
@@ -48,30 +52,120 @@ jobs:
           type=semver,pattern={{version}}
           type=semver,pattern={{major}}.{{minor}}
           type=raw,value=latest,enable={{is_default_branch}}
+          type=raw,value=${{ github.event.inputs.tag }},enable=${{ github.event_name == 'workflow_dispatch' }}
+        labels: |
+          org.opencontainers.image.title=Opendoor MCP Server
+          org.opencontainers.image.description=Production-grade Model Context Protocol server with multi-language support
+          org.opencontainers.image.vendor=Opendoor Team
+          org.opencontainers.image.licenses=MIT
+          org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          org.opencontainers.image.documentation=https://github.com/${{ github.repository }}/blob/main/mcp-server/README.md
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./mcp-server
+        context: .
+        file: ./Dockerfile.opendoor-mcp
         platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          BUILDTIME=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+          VERSION=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
 
     - name: Test Docker image
       run: |
-        docker run --rm -d --name test-mcp \
+        echo "🧪 Testing published Docker image..."
+        
+        # Start container in background
+        docker run --rm -d --name test-published-mcp \
           -p 3000:3000 \
+          -p 3001:3001 \
           -e MCP_TRANSPORT=sse \
+          -e NODE_ENV=production \
           ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
         
         # Wait for container to start
-        sleep 30
+        echo "⏳ Waiting for container to start..."
+        sleep 45
         
         # Test health endpoint
-        curl -f http://localhost:3000/health || exit 1
+        echo "🔍 Testing health endpoint..."
+        for i in {1..15}; do
+          if curl -f http://localhost:3000/health; then
+            echo "✅ Health check passed!"
+            break
+          fi
+          echo "⏳ Attempt $i failed, retrying in 5 seconds..."
+          sleep 5
+          if [ $i -eq 15 ]; then
+            echo "❌ Health check failed after 15 attempts"
+            docker logs test-published-mcp
+            exit 1
+          fi
+        done
+        
+        # Test web interface
+        echo "🌐 Testing web interface..."
+        curl -f http://localhost:3001/ || echo "⚠️ Web interface test failed"
+        
+        # Test MCP endpoints
+        echo "🔌 Testing MCP endpoints..."
+        curl -f http://localhost:3000/config/sse || echo "⚠️ SSE config endpoint test failed"
+        curl -f http://localhost:3000/config/stdio || echo "⚠️ STDIO config endpoint test failed"
+        
+        # Show container logs for debugging
+        echo "📋 Container logs (last 50 lines):"
+        docker logs test-published-mcp --tail 50
         
         # Cleanup
-        docker stop test-mcp
+        docker stop test-published-mcp
+
+    - name: Generate SBOM
+      uses: anchore/sbom-action@v0
+      with:
+        image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        format: spdx-json
+        output-file: sbom.spdx.json
+
+    - name: Upload SBOM
+      uses: actions/upload-artifact@v4
+      with:
+        name: sbom
+        path: sbom.spdx.json
+
+    - name: Update package description
+      run: |
+        echo "📝 Updating package description..."
+        curl -X PATCH \
+          -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+          -H "Accept: application/vnd.github.v3+json" \
+          https://api.github.com/user/packages/container/opendoor%2Fopendoor-mcp \
+          -d '{
+            "description": "Production-grade Model Context Protocol server with multi-language code execution, VS Code integration, and browser automation capabilities"
+          }' || echo "⚠️ Failed to update package description"
+
+    - name: Publish summary
+      run: |
+        echo "🎉 Opendoor MCP Server Docker image published successfully!" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 📦 Published Images" >> $GITHUB_STEP_SUMMARY
+        echo "- \`ghcr.io/${{ github.repository }}/opendoor-mcp:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "- \`ghcr.io/${{ github.repository }}/opendoor-mcp:${{ github.ref_name }}\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 🚀 Quick Start" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`bash" >> $GITHUB_STEP_SUMMARY
+        echo "# Run with SSE transport (recommended)" >> $GITHUB_STEP_SUMMARY
+        echo "docker run -d --name opendoor-mcp \\" >> $GITHUB_STEP_SUMMARY
+        echo "  -p 3000:3000 -p 3001:3001 \\" >> $GITHUB_STEP_SUMMARY
+        echo "  -v /var/run/docker.sock:/var/run/docker.sock \\" >> $GITHUB_STEP_SUMMARY
+        echo "  ghcr.io/${{ github.repository }}/opendoor-mcp:latest" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "# Access documentation at http://localhost:3001" >> $GITHUB_STEP_SUMMARY
+        echo "\`\`\`" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "## 🔗 Integration" >> $GITHUB_STEP_SUMMARY
+        echo "Visit http://localhost:3001 for LLM client configuration examples." >> $GITHUB_STEP_SUMMARY
