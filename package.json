@@ -1,0 +1,65 @@
+{
+  "name": "opendoor-mcp-server",
+  "version": "2.0.0",
+  "description": "Production-grade MCP server with multi-language code execution, VS Code integration, and browser automation",
+  "main": "mcp-server/dist/index.js",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "scripts": {
+    "start": "npm run start --workspace=mcp-server",
+    "dev": "npm run dev --workspace=mcp-server",
+    "build": "npm run build --workspace=mcp-server",
+    "test": "npm run test --workspace=mcp-server",
+    "lint": "npm run lint --workspace=mcp-server",
+    "lint:fix": "npm run lint:fix --workspace=mcp-server",
+    "docker:build": "docker build -f Dockerfile.opendoor-mcp -t opendoor-mcp:latest .",
+    "docker:run": "docker run -d -p 3000:3000 -p 3001:3001 -v /var/run/docker.sock:/var/run/docker.sock -e MCP_TRANSPORT=sse opendoor-mcp:latest",
+    "docker:compose": "docker-compose -f docker-compose.production.yml up -d",
+    "docker:compose:down": "docker-compose -f docker-compose.production.yml down",
+    "health": "curl -f http://localhost:3000/health || exit 1",
+    "clean": "npm run clean --workspace=mcp-server && docker system prune -f",
+    "setup": "npm install && npm run build",
+    "postinstall": "npm install --workspace=mcp-server"
+  },
+  "workspaces": [
+    "mcp-server"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "llm",
+    "large-language-models",
+    "code-execution",
+    "vscode",
+    "playwright",
+    "docker",
+    "containers",
+    "browser-automation",
+    "production-grade",
+    "high-performance",
+    "fast-boot",
+    "security",
+    "enterprise"
+  ],
+  "author": "Opendoor Team",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/openhands-mentat-cli/Opendoor.git"
+  },
+  "bugs": {
+    "url": "https://github.com/openhands-mentat-cli/Opendoor/issues"
+  },
+  "homepage": "https://github.com/openhands-mentat-cli/Opendoor#readme",
+  "funding": {
+    "type": "github",
+    "url": "https://github.com/sponsors/openhands-mentat-cli"
+  },
+  "volta": {
+    "node": "22.0.0",
+    "npm": "10.5.1"
+  }
+}
